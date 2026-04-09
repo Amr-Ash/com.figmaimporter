@@ -12,7 +12,7 @@ A Unity Editor tool that imports Figma designs directly into your scene as a Can
 2. Click **+** → **Add package from git URL**
 3. Paste:
    ```
-   https://github.com/Amr-Ash/Figma-to-Unity-importer.git
+   https://github.com/Amr-Ash/com.figmaimporter.git
    ```
 4. Click **Add**
 
@@ -22,7 +22,7 @@ Unity will automatically install the two required dependencies:
 
 To install a specific version tag:
 ```
-https://github.com/Amr-Ash/Figma-to-Unity-importer.git#v1.0.0
+https://github.com/Amr-Ash/com.figmaimporter.git#v1.0.0
 ```
 
 ---
