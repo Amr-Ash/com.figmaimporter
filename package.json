@@ -1,0 +1,25 @@
+{
+  "name": "com.figmaimporter",
+  "version": "1.0.0",
+  "displayName": "Figma → uGUI Importer",
+  "description": "Imports Figma designs directly into Unity as uGUI (Canvas) hierarchies. Fetches layout, colors, text, and images via the Figma REST API.",
+  "unity": "2021.3",
+  "unityRelease": "0f1",
+  "author": {
+    "name": "Your Name",
+    "email": "you@example.com",
+    "url": "https://github.com/yourusername"
+  },
+  "dependencies": {
+    "com.unity.editorcoroutines": "1.0.0",
+    "com.unity.nuget.newtonsoft-json": "3.0.2"
+  },
+  "keywords": [
+    "figma",
+    "ui",
+    "ugui",
+    "importer",
+    "design"
+  ],
+  "type": "tool"
+}
