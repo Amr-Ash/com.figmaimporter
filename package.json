@@ -10,12 +10,13 @@
     "email": "amrhelmy110045@gmail.com",
     "url": "https://github.com/Amr-Ash"
   },
-  "contributors":{
+  "contributors": [
+    {
         "name": "Esraa Ali",
         "email": "essrraaa.alii@gmail.com",
         "url": "https://github.com/EsraaAliXR"
-
-    },
+    }
+],
   "dependencies": {
     "com.unity.editorcoroutines": "1.0.0",
     "com.unity.nuget.newtonsoft-json": "3.0.2"
