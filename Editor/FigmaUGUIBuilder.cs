@@ -13,8 +13,8 @@ namespace FigmaImporter
     ///   Figma  →  origin top-left,  Y increases downward,  absolute positions
     ///   Unity  →  origin depends on anchor, Y increases upward, positions relative to parent
     ///
-    /// Strategy used here: anchor = top-left (0,1), pivot = top-left (0,1).
-    /// This keeps the math simple: anchoredPosition = (relX, -relY).
+    /// Strategy used here: anchor = parent top-left (0,1), pivot = element center (0.5,0.5).
+    /// anchoredPosition = (relX + w/2, -(relY + h/2)) — points from parent top-left to element center.
     /// </summary>
     public static class FigmaUGUIBuilder
     {
@@ -142,9 +142,10 @@ namespace FigmaImporter
             if (node.clipsContent)
                 go.AddComponent<RectMask2D>();
 
-            // Auto-layout → Unity Layout Group
-            if (node.layoutMode == "HORIZONTAL" || node.layoutMode == "VERTICAL")
-                ApplyLayoutGroup(go, node);
+            // NOTE: We intentionally do NOT add HorizontalLayoutGroup/VerticalLayoutGroup here.
+            // Figma's absoluteBoundingBox already encodes the final pixel positions of every node,
+            // including the result of any auto-layout. Adding a Unity LayoutGroup would override
+            // those positions with its own calculation and cause misalignment.
 
             // Recurse into children
             foreach (var child in node.children)
@@ -152,32 +153,6 @@ namespace FigmaImporter
                     BuildNode(child, go.transform, node.absoluteBoundingBox, spriteMap);
 
             return go;
-        }
-
-        private static void ApplyLayoutGroup(GameObject go, FigmaNode node)
-        {
-            var padding = new RectOffset(
-                Mathf.RoundToInt(node.paddingLeft),
-                Mathf.RoundToInt(node.paddingRight),
-                Mathf.RoundToInt(node.paddingTop),
-                Mathf.RoundToInt(node.paddingBottom));
-
-            if (node.layoutMode == "HORIZONTAL")
-            {
-                var hlg                    = go.AddComponent<HorizontalLayoutGroup>();
-                hlg.padding                = padding;
-                hlg.spacing                = node.itemSpacing;
-                hlg.childForceExpandWidth  = false;
-                hlg.childForceExpandHeight = false;
-            }
-            else
-            {
-                var vlg                    = go.AddComponent<VerticalLayoutGroup>();
-                vlg.padding                = padding;
-                vlg.spacing                = node.itemSpacing;
-                vlg.childForceExpandWidth  = false;
-                vlg.childForceExpandHeight = false;
-            }
         }
 
         private static GameObject BuildImageNode(FigmaNode node,
@@ -249,17 +224,22 @@ namespace FigmaImporter
             var bbox = node.absoluteBoundingBox;
             rt.sizeDelta = new Vector2(bbox.width, bbox.height);
 
-            // Anchor & pivot at top-left so math is straightforward
-            rt.anchorMin = new Vector2(0, 1);
-            rt.anchorMax = new Vector2(0, 1);
-            rt.pivot     = new Vector2(0, 1);
+            // Anchor fixed at parent's top-left corner.
+            // Pivot at element center — matches Figma's transform origin so that
+            // rotation and scale operate around the correct point.
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot     = new Vector2(0.5f, 0.5f);
 
-            // Position relative to parent (Figma absolute → relative)
+            // Offset from parent top-left to the element's top-left (Figma absolute coords)
             float relX = bbox.x - parentBBox.x;
             float relY = bbox.y - parentBBox.y;
 
-            // Unity Y is flipped: positive Y moves up, negative Y moves down from pivot
-            rt.anchoredPosition = new Vector2(relX, -relY);
+            // anchoredPosition points to the PIVOT (center), so shift by half the size.
+            // Unity Y is upward, Figma Y is downward → negate relY.
+            rt.anchoredPosition = new Vector2(
+                relX + bbox.width  * 0.5f,
+              -(relY + bbox.height * 0.5f));
 
             // Figma rotation is clockwise degrees; Unity localEulerAngles Z is counter-clockwise
             if (node.rotation != 0f)
