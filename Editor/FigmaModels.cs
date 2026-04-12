@@ -43,6 +43,7 @@ namespace FigmaImporter
         public string type;                             // FRAME, GROUP, RECTANGLE, TEXT, etc.
         public bool visible = true;
         public float opacity = 1f;
+        public float rotation = 0f;                    // degrees, clockwise (Figma) → negated for Unity
         public float cornerRadius = 0f;
         public float strokeWeight = 0f;
         public bool clipsContent = false;

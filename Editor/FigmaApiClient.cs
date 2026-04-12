@@ -23,7 +23,7 @@ namespace FigmaImporter
         /// </summary>
         public static string ExtractFileKey(string url)
         {
-            var match = Regex.Match(url, @"figma\.com/(?:file|design)/([a-zA-Z0-9]+)");
+            var match = Regex.Match(url, @"figma\.com/(?:file|design)/([\w-]+)");
             return match.Success ? match.Groups[1].Value : null;
         }
 
@@ -130,7 +130,8 @@ namespace FigmaImporter
                 name         = t["name"]?.ToString() ?? "Node",
                 type         = t["type"]?.ToString() ?? "FRAME",
                 visible      = t["visible"]?.Value<bool>()  ?? true,
-                opacity      = t["opacity"]?.Value<float>() ?? 1f,
+                opacity      = t["opacity"]?.Value<float>()     ?? 1f,
+                rotation     = t["rotation"]?.Value<float>()     ?? 0f,
                 cornerRadius = t["cornerRadius"]?.Value<float>() ?? 0f,
                 strokeWeight = t["strokeWeight"]?.Value<float>() ?? 0f,
                 clipsContent = t["clipsContent"]?.Value<bool>() ?? false,

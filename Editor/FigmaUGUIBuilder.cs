@@ -100,7 +100,7 @@ namespace FigmaImporter
             go.transform.SetParent(parent, false);
 
             var rt = go.GetComponent<RectTransform>() ?? go.AddComponent<RectTransform>();
-            ApplyRectTransform(rt, node.absoluteBoundingBox, parentBBox);
+            ApplyRectTransform(rt, node, parentBBox);
 
             // Opacity via CanvasGroup (only add when needed to avoid overhead)
             if (node.opacity < 0.999f)
@@ -138,6 +138,14 @@ namespace FigmaImporter
                 go.AddComponent<RectTransform>();
             }
 
+            // Clip children to this container's bounds
+            if (node.clipsContent)
+                go.AddComponent<RectMask2D>();
+
+            // Auto-layout → Unity Layout Group
+            if (node.layoutMode == "HORIZONTAL" || node.layoutMode == "VERTICAL")
+                ApplyLayoutGroup(go, node);
+
             // Recurse into children
             foreach (var child in node.children)
                 if (child.visible)
@@ -146,17 +154,44 @@ namespace FigmaImporter
             return go;
         }
 
+        private static void ApplyLayoutGroup(GameObject go, FigmaNode node)
+        {
+            var padding = new RectOffset(
+                Mathf.RoundToInt(node.paddingLeft),
+                Mathf.RoundToInt(node.paddingRight),
+                Mathf.RoundToInt(node.paddingTop),
+                Mathf.RoundToInt(node.paddingBottom));
+
+            if (node.layoutMode == "HORIZONTAL")
+            {
+                var hlg                    = go.AddComponent<HorizontalLayoutGroup>();
+                hlg.padding                = padding;
+                hlg.spacing                = node.itemSpacing;
+                hlg.childForceExpandWidth  = false;
+                hlg.childForceExpandHeight = false;
+            }
+            else
+            {
+                var vlg                    = go.AddComponent<VerticalLayoutGroup>();
+                vlg.padding                = padding;
+                vlg.spacing                = node.itemSpacing;
+                vlg.childForceExpandWidth  = false;
+                vlg.childForceExpandHeight = false;
+            }
+        }
+
         private static GameObject BuildImageNode(FigmaNode node,
             Dictionary<string, Sprite> spriteMap)
         {
             var go  = new GameObject(SanitizeName(node));
             var img = go.AddComponent<Image>();
 
-            // Image fill takes priority
+            // Image fill takes priority.
+            // spriteMap is keyed by node ID (from the Figma render API), not by imageRef.
             var imageFill = GetFirstImageFill(node.fills);
             if (imageFill != null
                 && spriteMap != null
-                && spriteMap.TryGetValue(imageFill.imageRef, out var sprite))
+                && spriteMap.TryGetValue(node.id, out var sprite))
             {
                 img.sprite          = sprite;
                 img.type            = Image.Type.Simple;
@@ -209,8 +244,9 @@ namespace FigmaImporter
         // ─── RectTransform positioning ───────────────────────────────────────────────
 
         private static void ApplyRectTransform(RectTransform rt,
-            FigmaBoundingBox bbox, FigmaBoundingBox parentBBox)
+            FigmaNode node, FigmaBoundingBox parentBBox)
         {
+            var bbox = node.absoluteBoundingBox;
             rt.sizeDelta = new Vector2(bbox.width, bbox.height);
 
             // Anchor & pivot at top-left so math is straightforward
@@ -224,6 +260,10 @@ namespace FigmaImporter
 
             // Unity Y is flipped: positive Y moves up, negative Y moves down from pivot
             rt.anchoredPosition = new Vector2(relX, -relY);
+
+            // Figma rotation is clockwise degrees; Unity localEulerAngles Z is counter-clockwise
+            if (node.rotation != 0f)
+                rt.localEulerAngles = new Vector3(0f, 0f, -node.rotation);
         }
 
         // ─── Helpers ────────────────────────────────────────────────────────────────

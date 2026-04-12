@@ -16,9 +16,10 @@ A Unity Editor tool that imports Figma designs directly into your scene as a Can
    ```
 4. Click **Add**
 
-Unity will automatically install the two required dependencies:
+Unity will automatically install all required dependencies:
 - `com.unity.editorcoroutines`
 - `com.unity.nuget.newtonsoft-json`
+- `com.unity.textmeshpro`
 
 To install a specific version tag:
 ```
@@ -93,9 +94,8 @@ Recipients import it via **Assets → Import Package → Custom Package**.
 | Issue | Workaround |
 |---|---|
 | Corner radius | Tagged as `[radius=N]` in name — use a rounded sprite or Rounded Corners shader |
-| Text rendering | Uses legacy `Text` — upgrade to TextMeshProUGUI manually after import |
+| TMP font assets | Font family name is appended to the GameObject name — assign the matching TMP Font Asset manually |
 | Gradients | Not supported — node will be transparent |
-| Auto-layout | Positions are baked — Unity Layout Groups not generated |
 | Figma components | Treated as regular frames — no Unity prefab linking |
 
 ---

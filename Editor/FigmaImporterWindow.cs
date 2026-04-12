@@ -16,6 +16,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using Newtonsoft.Json.Linq;
 using Unity.EditorCoroutines.Editor;
 using UnityEditor;
@@ -267,22 +268,37 @@ namespace FigmaImporter
                     }
                     else if (imageUrls != null && imageUrls.Count > 0)
                     {
+                        // Ensure the target folder exists
+                        const string imageFolder = "Assets/FigmaImporter/Images";
+                        if (!AssetDatabase.IsValidFolder("Assets/FigmaImporter"))
+                            AssetDatabase.CreateFolder("Assets", "FigmaImporter");
+                        if (!AssetDatabase.IsValidFolder(imageFolder))
+                            AssetDatabase.CreateFolder("Assets/FigmaImporter", "Images");
+
                         int done = 0;
                         foreach (var kvp in imageUrls)
                         {
-                            Texture2D tex  = null;
+                            Texture2D tex   = null;
                             string    dlErr = null;
                             yield return FigmaApiClient.DownloadTexture(kvp.Value,
                                 (t, e) => { tex = t; dlErr = e; });
 
                             if (tex != null)
                             {
-                                var sprite = Sprite.Create(
-                                    tex,
-                                    new Rect(0, 0, tex.width, tex.height),
-                                    new Vector2(0.5f, 0.5f));
-                                sprite.name = kvp.Key;
-                                spriteMap[kvp.Key] = sprite;
+                                // Save as a PNG asset so the sprite persists across reloads
+                                string safeName  = kvp.Key.Replace(":", "_").Replace("/", "_");
+                                string assetPath = $"{imageFolder}/{safeName}.png";
+                                File.WriteAllBytes(assetPath, tex.EncodeToPNG());
+                                AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
+
+                                var ti = (TextureImporter)AssetImporter.GetAtPath(assetPath);
+                                ti.textureType         = TextureImporterType.Sprite;
+                                ti.spritePixelsPerUnit = 100;
+                                ti.SaveAndReimport();
+
+                                var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+                                if (sprite != null)
+                                    spriteMap[kvp.Key] = sprite;
                             }
                             else if (dlErr != null)
                             {
