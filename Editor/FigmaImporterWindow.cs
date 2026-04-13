@@ -252,21 +252,30 @@ namespace FigmaImporter
 
                 if (imageNodeIds.Count > 0)
                 {
-                    SetStatus($"⏳ Requesting render URLs for {imageNodeIds.Count} image node(s)…");
-                    Repaint();
+                    // Figma render API: batch into groups of 100 to stay within URL length limits
+                    const int batchSize = 100;
+                    var imageUrls = new Dictionary<string, string>();
 
-                    Dictionary<string, string> imageUrls = null;
-                    string imgError = null;
-
-                    yield return FigmaApiClient.FetchRenderedImageUrls(
-                        fileKey, apiToken, imageNodeIds,
-                        (urls, err) => { imageUrls = urls; imgError = err; });
-
-                    if (imgError != null)
+                    for (int b = 0; b < imageNodeIds.Count; b += batchSize)
                     {
-                        Debug.LogWarning("[FigmaImporter] Image fetch error: " + imgError);
+                        var batch = imageNodeIds.GetRange(b, Mathf.Min(batchSize, imageNodeIds.Count - b));
+                        int batchEnd = Mathf.Min(b + batchSize, imageNodeIds.Count);
+                        SetStatus($"⏳ Requesting render URLs ({batchEnd}/{imageNodeIds.Count} nodes)…");
+                        Repaint();
+
+                        Dictionary<string, string> batchUrls = null;
+                        string batchErr = null;
+                        yield return FigmaApiClient.FetchRenderedImageUrls(
+                            fileKey, apiToken, batch,
+                            (urls, err) => { batchUrls = urls; batchErr = err; });
+
+                        if (batchErr != null)
+                            Debug.LogWarning($"[FigmaImporter] Render batch error: {batchErr}");
+                        else if (batchUrls != null)
+                            foreach (var kv in batchUrls) imageUrls[kv.Key] = kv.Value;
                     }
-                    else if (imageUrls != null && imageUrls.Count > 0)
+
+                    if (imageUrls.Count > 0)
                     {
                         // Ensure the target folder exists
                         const string imageFolder = "Assets/FigmaImporter/Images";
@@ -339,11 +348,15 @@ namespace FigmaImporter
 
         private void CollectImageNodeIds(FigmaNode node, List<string> ids)
         {
-            bool hasImageFill = node.fills.Exists(f => f.type == "IMAGE" && f.visible);
-            if (hasImageFill && !ids.Contains(node.id))
+            // Render every visible non-TEXT node as a PNG so the imported result
+            // looks pixel-perfect instead of solid-colored rectangles.
+            // TEXT nodes are handled by TextMeshPro instead.
+            if (node.type != "TEXT" && !ids.Contains(node.id))
                 ids.Add(node.id);
+
             foreach (var child in node.children)
-                CollectImageNodeIds(child, ids);
+                if (child.visible)
+                    CollectImageNodeIds(child, ids);
         }
 
         private void SetStatus(string msg)

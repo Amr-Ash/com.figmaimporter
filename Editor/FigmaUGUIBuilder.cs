@@ -69,29 +69,35 @@ namespace FigmaImporter
 
             GameObject go;
 
-            switch (node.type)
+            if (node.type == "TEXT")
             {
-                case "TEXT":
-                    go = BuildTextNode(node);
-                    break;
-
-                case "RECTANGLE":
-                case "ELLIPSE":
-                case "VECTOR":
-                case "BOOLEAN_OPERATION":
-                case "STAR":
-                case "POLYGON":
-                    go = BuildImageNode(node, spriteMap);
-                    break;
-
-                case "FRAME":
-                case "COMPONENT":
-                case "COMPONENT_SET":
-                case "INSTANCE":
-                case "GROUP":
-                default:
-                    go = BuildContainerNode(node, spriteMap);
-                    break;
+                // Text nodes are always rendered by TextMeshPro for editability
+                go = BuildTextNode(node);
+            }
+            else if (spriteMap != null && spriteMap.ContainsKey(node.id))
+            {
+                // A pre-rendered PNG from Figma is available — show it as a flat Image.
+                // Children are already baked into this PNG so we skip recursion entirely,
+                // giving pixel-perfect results for buttons, icons, frames, and shapes.
+                go = BuildFlatPngNode(node, spriteMap[node.id]);
+            }
+            else
+            {
+                // Fallback: no PNG available, reconstruct from fill data
+                switch (node.type)
+                {
+                    case "RECTANGLE":
+                    case "ELLIPSE":
+                    case "VECTOR":
+                    case "BOOLEAN_OPERATION":
+                    case "STAR":
+                    case "POLYGON":
+                        go = BuildImageNode(node, spriteMap);
+                        break;
+                    default:
+                        go = BuildContainerNode(node, spriteMap);
+                        break;
+                }
             }
 
             if (go == null) return null;
@@ -152,6 +158,21 @@ namespace FigmaImporter
                 if (child.visible)
                     BuildNode(child, go.transform, node.absoluteBoundingBox, spriteMap);
 
+            return go;
+        }
+
+        /// <summary>
+        /// Creates a single Image component showing a pre-rendered Figma PNG.
+        /// No children are added — everything is baked into the sprite.
+        /// </summary>
+        private static GameObject BuildFlatPngNode(FigmaNode node, Sprite sprite)
+        {
+            var go  = new GameObject(SanitizeName(node));
+            var img = go.AddComponent<Image>();
+            img.sprite         = sprite;
+            img.type           = Image.Type.Simple;
+            img.preserveAspect = false;
+            img.color          = Color.white;
             return go;
         }
 
